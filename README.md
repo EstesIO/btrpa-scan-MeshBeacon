@@ -289,6 +289,3 @@ Scan complete - 30.0s elapsed
 
 Press `Ctrl+C` at any time to gracefully stop the scan and display summary statistics.
 
-## License
-
-See [LICENSE](LICENSE) for details.
