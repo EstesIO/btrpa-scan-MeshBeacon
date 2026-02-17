@@ -870,7 +870,9 @@ class BLEScanner:
                  adapters: Optional[List[str]] = None,
                  gps: bool = True,
                  ref_rssi: Optional[int] = None,
-                 name_filter: Optional[str] = None):
+                 name_filter: Optional[str] = None,
+                 gui: bool = False,
+                 gui_port: int = 5000):
         self.target_mac = target_mac.upper() if target_mac else None
         self.targeted = target_mac is not None
         self.timeout = timeout
@@ -923,6 +925,10 @@ class BLEScanner:
         self.device_best_gps: Dict[str, dict] = {}
         # Thread safety for detection callback (multi-adapter)
         self._cb_lock = threading.Lock()
+        # GUI mode
+        self.gui = gui
+        self.gui_port = gui_port
+        self._gui_server = None
 
     def _avg_rssi(self, addr: str, rssi: int) -> int:
         """Update RSSI sliding window for a device and return the average."""
@@ -1014,6 +1020,28 @@ class BLEScanner:
                 "resolved": resolved,
             }
 
+        # Update GUI
+        if self.gui and self._gui_server is not None:
+            addr = (device.address or "").upper()
+            best_gps = self.device_best_gps.get(addr)
+            self._gui_server.emit_device({
+                'address': device.address,
+                'name': device.name or 'Unknown',
+                'rssi': adv.rssi,
+                'avg_rssi': avg_rssi,
+                'tx_power': adv.tx_power,
+                'est_distance': record['est_distance'],
+                'latitude': record.get('latitude', ''),
+                'longitude': record.get('longitude', ''),
+                'best_gps': best_gps,
+                'manufacturer_data': record.get('manufacturer_data', ''),
+                'service_uuids': record.get('service_uuids', ''),
+                'times_seen': self.unique_devices.get(addr, 0),
+                'last_seen': time.strftime('%H:%M:%S'),
+                'resolved': resolved,
+                'timestamp': record['timestamp'],
+            })
+
         # Proximity alert
         if self.alert_within is not None and record["est_distance"] != "":
             if record["est_distance"] <= self.alert_within:
@@ -1032,7 +1060,7 @@ class BLEScanner:
         # Always record for output / log / TUI
         record = self._record_device(device, adv, resolved=resolved, avg_rssi=avg_rssi)
 
-        if self.quiet or self.tui:
+        if self.quiet or self.tui or self.gui:
             return
 
         rssi = adv.rssi
@@ -1270,6 +1298,11 @@ class BLEScanner:
             self._log_writer.writeheader()
             self._log_fh.flush()
 
+        # GUI setup
+        if self.gui:
+            self._gui_server = GuiServer(port=self.gui_port)
+            self._gui_server.start()
+
         # TUI setup
         if self.tui:
             self._tui_screen = curses.initscr()
@@ -1300,6 +1333,20 @@ class BLEScanner:
                 self._log_fh.close()
                 self._log_fh = None
                 self._log_writer = None
+
+        # GUI scan complete
+        if self.gui and self._gui_server is not None:
+            self._gui_server.emit_status({
+                'elapsed': round(elapsed, 1),
+                'total_detections': self.seen_count,
+                'unique_count': len(self.unique_devices),
+                'scanning': False,
+            })
+            self._gui_server.emit_complete({
+                'elapsed': round(elapsed, 1),
+                'total_detections': self.seen_count,
+                'unique_devices': len(self.unique_devices),
+            })
 
         # Summary and output (printed after TUI is torn down)
         self._print_summary(elapsed)
@@ -1338,6 +1385,18 @@ class BLEScanner:
                 while self.running:
                     if self._tui_screen is not None:
                         self._redraw_tui(self._tui_screen)
+                    if self.gui and self._gui_server is not None:
+                        el = time.time() - start
+                        self._gui_server.emit_status({
+                            'elapsed': round(el, 1),
+                            'total_detections': self.seen_count,
+                            'unique_count': len(self.unique_devices),
+                            'scanning': True,
+                        })
+                        if self._gps is not None:
+                            fix = self._gps.fix
+                            if fix is not None:
+                                self._gui_server.emit_gps(fix)
                     await asyncio.sleep(
                         _TUI_REFRESH_INTERVAL if self.tui
                         else _SCAN_POLL_INTERVAL)
@@ -1345,6 +1404,18 @@ class BLEScanner:
                 while self.running and (time.time() - start) < self.timeout:
                     if self._tui_screen is not None:
                         self._redraw_tui(self._tui_screen)
+                    if self.gui and self._gui_server is not None:
+                        el = time.time() - start
+                        self._gui_server.emit_status({
+                            'elapsed': round(el, 1),
+                            'total_detections': self.seen_count,
+                            'unique_count': len(self.unique_devices),
+                            'scanning': True,
+                        })
+                        if self._gps is not None:
+                            fix = self._gps.fix
+                            if fix is not None:
+                                self._gui_server.emit_gps(fix)
                     await asyncio.sleep(_TIMED_SCAN_POLL_INTERVAL)
         except asyncio.CancelledError:
             pass
@@ -1502,7 +1573,7 @@ class BLEScanner:
             print(f"  Live log written to {self.log_file}")
 
     def stop(self):
-        if not self.tui and self.running:
+        if not self.tui and not self.gui and self.running:
             print("\nStopping scan...")
         self.running = False
 
