@@ -61,10 +61,11 @@ This repository extends **[Dave Kennedy's](https://twitter.com/HackingDave) btrp
 ## 🏗️ System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│          SEARCH OPERATION: 50-NODE DEPLOYMENT           │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│       SEARCH OPERATION: GROUND TEAMS + UAV SWARM DEPLOYMENT         │
+└─────────────────────────────────────────────────────────────────────┘
 
+GROUND DEPLOYMENT:
 Field Team A          Field Team B          Field Team C
 ┌──────────┐         ┌──────────┐         ┌──────────┐
 │ NODE-001 │         │ NODE-002 │         │ NODE-003 │
@@ -75,22 +76,42 @@ Field Team A          Field Team B          Field Team C
      │         LoRa Network (2-10km range)    │
      └────────────────┬───────────────────────┘
                       │
-                      ▼
-               ┌──────────────┐
-               │  HOMEBASE    │
-               │  Command     │
-               │  Center      │
-               │  • Live Map  │
-               │  • Priority  │
-               │  • CSV Logs  │
-               └──────────────┘
+                      │
+UAV/DRONE DEPLOYMENT:                        │
+    ┌─────────┐      ┌─────────┐            │
+    │ UAV-001 │      │ UAV-002 │            │
+    │ Payload │◄LoRa─┤ Payload │            │
+    │ +GPS    │ Mesh │ +GPS    │            │
+    └────┬────┘      └────┬────┘            │
+         │                │                  │
+         │  • Rapid area scanning           │
+         │  • GPS breadcrumb trail          │
+         │  • Coverage heatmap              │
+         └────────────────┴──────────────────┘
+                          │
+                          ▼
+                   ┌──────────────┐
+                   │  HOMEBASE    │
+                   │  Command     │
+                   │  Center      │
+                   │  • Live Map  │
+                   │  • Coverage  │
+                   │    Heatmap   │
+                   │  • Priority  │
+                   │  • CSV Logs  │
+                   └──────────────┘
 
 Detection: "Medtronic pacemaker detected"
 Location: 34.0522°N, 118.2437°W
+Coverage: Grid B3 - Scanned 2 min ago by UAV-001
 Priority: CRITICAL - Dispatch Team B
 ```
 
-**Key Innovation:** Transforms medical device Bluetooth from a privacy concern into a lifesaving beacon during emergencies.
+**Key Innovations:**
+- **Medical Device Beaconing:** Transforms medical device Bluetooth from a privacy concern into a lifesaving beacon during emergencies
+- **UAV-Deployable Payloads:** Lightweight nodes ($36 each) can be mounted to commercial drones for rapid area scanning
+- **GPS Coverage Mapping:** Every node transmits GPS position, creating real-time heatmap of searched areas to avoid duplicate coverage and identify gaps
+- **Mesh Network Architecture:** Ground teams and UAVs share the same LoRa mesh, enabling coordinated search operations across mixed deployment scenarios
 
 ---
 
@@ -133,8 +154,8 @@ This repository contains multiple components. **Start here based on your goal:**
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/EstesIO/btrpa-scan.git
-cd btrpa-scan/firmware/btrpa-scan-lora
+git clone https://github.com/EstesIO/btrpa-scan-LoraMesh.git
+cd btrpa-scan-LoraMesh/firmware/btrpa-scan-lora
 
 # 2. Configure target MAC address (the missing person's device)
 # Edit include/config.h with pacemaker/phone MAC
@@ -196,6 +217,14 @@ python3 homebase_receiver.py
 - **Range:** 10-20km mesh coverage
 - **Mission:** Weeks to months
 - **Result:** Welfare checks for at-risk residents with medical devices
+
+### Scenario 4: UAV Swarm Deployment (Large Area Search)
+- **Nodes:** 6 UAV-mounted payloads + 4 ground command posts
+- **Coverage:** 100km² scanned in 2-3 hours
+- **GPS Tracking:** Real-time heatmap shows scanned areas, prevents duplicate coverage
+- **Mission:** Rapid initial sweep, then ground team follow-up on detections
+- **Result:** Locate missing person's smartphone/medical device across vast wilderness area, GPS breadcrumb trail guides ground teams to last known detection zone
+- **Payload Specs:** 120g per node (Heltec + battery), mountable to DJI Mavic/Phantom or custom fixed-wing UAVs
 
 → **[Complete scenarios with success metrics in PRD](lorawan-ble-search-rescue-prd.md#deployment-scenarios)**
 
@@ -299,10 +328,14 @@ python3 homebase_receiver.py
 - [ ] IRK resolution for smartphones
 - [ ] Multi-node triangulation
 - [ ] Solar charging optimization
+- [ ] **GPS coverage heatmap visualization** (shows scanned areas in real-time)
+- [ ] **Breadcrumb trail tracking** (prevent duplicate UAV/team coverage)
 
 ### 🔮 Phase 3: Field Deployable System (Q3 2026)
 - [ ] Weatherproof enclosures (IP67)
 - [ ] Mobile app for field commanders
+- [ ] **UAV payload mounting kits** (DJI Mavic/Phantom compatible)
+- [ ] **UAV integration guide** (weight/power specs for drone deployment)
 - [ ] Integration with FEMA/USAR systems
 - [ ] Partnership with SAR organizations
 
@@ -458,7 +491,7 @@ optional arguments:
 
 ## 📞 Contact & Support
 
-**Project Repository:** https://github.com/EstesIO/btrpa-scan
+**Project Repository:** https://github.com/EstesIO/btrpa-scan-LoraMesh
 **Author:** Grayson Estes (grayson@estes.io)
 **Original btrpa-scan:** https://github.com/TrustedSec/btrpa-scan
 
