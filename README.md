@@ -492,7 +492,7 @@ optional arguments:
 ## 📞 Contact & Support
 
 **Project Repository:** https://github.com/EstesIO/btrpa-scan-MeshBeacon
-**Author:** Grayson Estes (grayson@estes.io)
+**Author:** Grayson Estes
 **Original btrpa-scan:** https://github.com/TrustedSec/btrpa-scan
 
 **For Active SAR Operations:**

@@ -897,7 +897,7 @@ Path 3 (If Node 4 fails): Node 10 → Node 11 → Node 5 → Node 2 → Command 
 
 ---
 
-**Project Status:** Proof of Concept  
-**Next Milestone:** Phase 1 Hardware Integration (March 2026)  
-**License:** Apache 2.0 (Hardware + Software)  
-**Contact:** grayson@estes.io
+**Project Status:** Proof of Concept
+**Next Milestone:** Phase 1 Hardware Integration (March 2026)
+**License:** Apache 2.0 (Hardware + Software)
+**Contact:** GitHub Issues & Discussions
