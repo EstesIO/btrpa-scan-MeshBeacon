@@ -776,6 +776,83 @@ class GpsdReader:
             sock.close()
 
 
+class GuiServer:
+    """Flask + SocketIO server for the GUI radar interface."""
+
+    def __init__(self, port: int = 5000):
+        self._port = port
+        self._app = Flask(__name__)
+        self._app.config['SECRET_KEY'] = os.urandom(24).hex()
+        self._sio = SocketIO(self._app, async_mode='threading', cors_allowed_origins='*')
+        self._thread = None
+        self._devices = {}
+        self._scan_status = {}
+        self._gps_fix = None
+        self._setup_routes()
+
+    def _setup_routes(self):
+        @self._app.route('/')
+        def index():
+            return render_template_string(_GUI_HTML, port=self._port)
+
+        @self._app.route('/api/state')
+        def state():
+            return jsonify({
+                'devices': self._devices,
+                'status': self._scan_status,
+                'gps': self._gps_fix,
+            })
+
+    def start(self):
+        """Start the Flask server in a background thread."""
+        for p in range(self._port, self._port + 11):
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.bind(('', p))
+                sock.close()
+                self._port = p
+                break
+            except OSError:
+                continue
+        else:
+            print(f"Error: Could not find open port in range "
+                  f"{self._port}-{self._port + 10}")
+            sys.exit(1)
+
+        self._thread = threading.Thread(
+            target=lambda: self._sio.run(
+                self._app, host='0.0.0.0', port=self._port,
+                allow_unsafe_werkzeug=True, log_output=False),
+            daemon=True)
+        self._thread.start()
+
+        url = f"http://localhost:{self._port}"
+        print(f"  GUI server started at {url}")
+        try:
+            webbrowser.open(url)
+        except Exception:
+            print(f"  Could not open browser — navigate to {url}")
+
+    def emit_device(self, data: dict):
+        """Push a device update to all connected clients."""
+        self._devices[data['address']] = data
+        self._sio.emit('device_update', data)
+
+    def emit_gps(self, fix: dict):
+        """Push scanner GPS position to all connected clients."""
+        self._gps_fix = fix
+        self._sio.emit('gps_update', fix)
+
+    def emit_status(self, status: dict):
+        """Push scan status to all connected clients."""
+        self._scan_status = status
+        self._sio.emit('scan_status', status)
+
+    def emit_complete(self, summary: dict):
+        """Push scan complete event."""
+        self._sio.emit('scan_complete', summary)
+
+
 class BLEScanner:
     def __init__(self, target_mac: Optional[str], timeout: float,
                  irks: Optional[List[bytes]] = None,
