@@ -1047,7 +1047,7 @@ class BLEScanner:
             if record["est_distance"] <= self.alert_within:
                 if self.tui and self._tui_screen is not None:
                     curses.beep()
-                elif not self.quiet:
+                elif not self.quiet and not self.gui:
                     print(f"\a  ** PROXIMITY ALERT ** {device.address} "
                           f"within ~{record['est_distance']:.1f}m "
                           f"(threshold: {self.alert_within}m)")
@@ -1156,7 +1156,7 @@ class BLEScanner:
         if is_uuid:
             if addr not in self.non_rpa_warned:
                 self.non_rpa_warned.add(addr)
-                if not self.quiet and not self.tui:
+                if not self.quiet and not self.tui and not self.gui:
                     print(f"  [!] UUID address {addr} — cannot resolve (need real MAC)")
             return
 
@@ -1354,7 +1354,7 @@ class BLEScanner:
 
     async def _scan_loop(self) -> float:
         """Run the BLE scanner and return elapsed seconds."""
-        if not self.quiet and not self.tui:
+        if not self.quiet and not self.tui and not self.gui:
             self._print_header()
 
         scanner_kwargs: dict = {"detection_callback": self.detection_callback}
