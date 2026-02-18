@@ -122,7 +122,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);
 #matrix-bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
 #matrix-bg canvas{width:100%;height:100%}
 /* everything else above the rain */
-#header,#panels,#table-wrap,#tooltip,#overlay{position:relative;z-index:1}
+#header,#panels,#tooltip,#overlay{position:relative;z-index:1}
 a{color:var(--cyan)}
 
 /* ── header bar ────────────────────────────────────────────── */
@@ -134,8 +134,7 @@ a{color:var(--cyan)}
 #header .meta{font-size:11px;color:var(--dim);width:100%}
 
 /* ── main panels ───────────────────────────────────────────── */
-#panels{display:flex;height:calc(55vh - 50px);min-height:300px;
-  border-bottom:1px solid var(--border)}
+#panels{display:flex;height:calc(100vh - 50px);min-height:300px}
 #radar-wrap{flex:3;position:relative;background:var(--card);
   border-right:1px solid var(--border);min-width:0}
 #radar-canvas{width:100%;height:100%;display:block}
@@ -144,17 +143,53 @@ a{color:var(--cyan)}
 #radar-wrap.full{flex:1}
 #map{width:100%;height:100%}
 
-/* ── device table ──────────────────────────────────────────── */
-#table-wrap{flex:1;overflow:auto;background:var(--bg);padding:4px 0}
-#dev-table{width:100%;border-collapse:collapse}
-#dev-table th{position:sticky;top:0;background:#111;color:var(--green);
-  padding:6px 10px;text-align:left;cursor:pointer;user-select:none;
-  border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap}
-#dev-table th:hover{color:var(--cyan)}
-#dev-table td{padding:5px 10px;border-bottom:1px solid #1e1e1e;
-  white-space:nowrap;font-size:12px}
-#dev-table tr:hover td{background:#222}
-#dev-table tr.highlight td{background:#1a2a1a}
+/* ── right-side device list ─────────────────────────────────── */
+#device-list{width:260px;min-width:200px;background:#111;
+  border-left:1px solid var(--border);overflow-y:auto;overflow-x:hidden;
+  display:flex;flex-direction:column}
+#device-list .dl-header{padding:8px 10px;color:var(--green);font-size:11px;
+  font-weight:700;letter-spacing:1px;border-bottom:1px solid var(--border);
+  text-transform:uppercase;flex-shrink:0}
+#device-list .dl-scroll{flex:1;overflow-y:auto;padding:4px 0}
+.dev-entry{padding:6px 10px;border-left:3px solid var(--dim);cursor:pointer;
+  transition:background .15s;font-size:11px;line-height:1.5;
+  border-bottom:1px solid #1a1a1a}
+.dev-entry:hover{background:#1a2a1a}
+.dev-entry.pinned{background:#1a1a2a}
+.dev-entry .de-addr{color:var(--text);font-weight:600;font-size:12px}
+.dev-entry .de-name{color:var(--dim);font-size:10px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.dev-entry .de-meta{display:flex;justify-content:space-between;
+  font-size:10px;color:var(--dim);margin-top:2px}
+.dev-entry .de-rssi{font-weight:600}
+.dev-entry .de-pin{float:right;color:var(--dim);font-size:10px;opacity:0;
+  transition:opacity .15s}
+.dev-entry:hover .de-pin{opacity:1}
+.dev-entry.pinned .de-pin{opacity:1;color:var(--cyan)}
+/* signal strength border colors */
+.dev-entry.sig-close{border-left-color:var(--green)}
+.dev-entry.sig-medium{border-left-color:var(--yellow)}
+.dev-entry.sig-far{border-left-color:var(--red)}
+.dev-entry.sig-unknown{border-left-color:var(--dim)}
+
+/* ── left-side pinned panel ────────────────────────────────── */
+#pinned-panel{width:220px;min-width:160px;background:#111;
+  border-right:1px solid var(--border);overflow-y:auto;overflow-x:hidden;
+  display:none;flex-direction:column}
+#pinned-panel.visible{display:flex}
+#pinned-panel .pp-header{padding:8px 10px;color:var(--cyan);font-size:11px;
+  font-weight:700;letter-spacing:1px;border-bottom:1px solid var(--border);
+  text-transform:uppercase;flex-shrink:0}
+#pinned-panel .pp-scroll{flex:1;overflow-y:auto;padding:4px 0}
+.pin-entry{padding:6px 10px;font-size:11px;line-height:1.5;
+  border-bottom:1px solid #1a1a1a;display:flex;align-items:center;
+  justify-content:space-between;border-left:3px solid var(--cyan)}
+.pin-entry .pe-addr{color:var(--text);font-weight:600;font-size:12px}
+.pin-entry .pe-name{color:var(--dim);font-size:10px}
+.pin-entry .pe-meta{font-size:10px;color:var(--dim)}
+.pin-entry .pe-close{cursor:pointer;color:var(--red);font-size:14px;
+  font-weight:700;padding:0 4px;opacity:0.6;transition:opacity .15s}
+.pin-entry .pe-close:hover{opacity:1}
 
 /* ── tooltip ───────────────────────────────────────────────── */
 #tooltip{position:fixed;pointer-events:none;background:rgba(10,10,10,.94);
@@ -196,30 +231,22 @@ a{color:var(--cyan)}
   <div class="meta" id="s-meta"></div>
 </div>
 
-<!-- radar + map -->
+<!-- pinned panel + radar + map + device list -->
 <div id="panels">
+  <div id="pinned-panel">
+    <div class="pp-header">Pinned Devices</div>
+    <div class="pp-scroll" id="pinned-scroll"></div>
+  </div>
   <div id="radar-wrap" class="full">
     <canvas id="radar-canvas"></canvas>
   </div>
   <div id="map-wrap" class="hidden">
     <div id="map"></div>
   </div>
-</div>
-
-<!-- device table -->
-<div id="table-wrap">
-<table id="dev-table">
-  <thead><tr>
-    <th data-col="address">Address</th>
-    <th data-col="name">Name</th>
-    <th data-col="rssi">RSSI</th>
-    <th data-col="avg_rssi">Avg</th>
-    <th data-col="est_distance">Distance</th>
-    <th data-col="times_seen">Seen</th>
-    <th data-col="last_seen">Last Seen</th>
-  </tr></thead>
-  <tbody id="dev-tbody"></tbody>
-</table>
+  <div id="device-list">
+    <div class="dl-header">Detected Devices</div>
+    <div class="dl-scroll" id="dl-scroll"></div>
+  </div>
 </div>
 
 <!-- tooltip -->
@@ -236,7 +263,7 @@ a{color:var(--cyan)}
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <!-- inject Jinja2 port variable before raw block -->
 <script>var WSPORT = {{ port }};</script>
 """ + r"""{% raw %}""" + r"""
@@ -250,9 +277,8 @@ a{color:var(--cyan)}
 var devices = {};          // address -> device obj
 var scannerGPS = null;     // {lat,lon,alt}
 var hasGPS = false;
-var sortCol = "rssi";
-var sortAsc = false;
 var hoveredAddr = null;
+var pinnedAddrs = {};      // address -> true (pinned devices)
 
 /* ================================================================
    Matrix Data Rain Background
@@ -786,72 +812,139 @@ function showMap(){
 }
 
 /* ================================================================
-   Device Table
+   Device List (right panel) + Pinned Panel (left)
    ================================================================ */
-var tbody = document.getElementById("dev-tbody");
-var rowMap = {};
+var dlScroll = document.getElementById("dl-scroll");
+var dlEntries = {}; // address -> DOM element
 
-function updateTable(){
+function sigClass(d){
+  var dist = d.est_distance;
+  if(dist==null||dist===""||dist<=0) return "sig-unknown";
+  if(dist<5) return "sig-close";
+  if(dist<=15) return "sig-medium";
+  return "sig-far";
+}
+
+function updateDeviceList(){
   var list = Object.values(devices);
+  // sort by RSSI descending (strongest first)
   list.sort(function(a,b){
-    var va = a[sortCol], vb = b[sortCol];
-    if(va==null||va==="") va = sortAsc ? Infinity : -Infinity;
-    if(vb==null||vb==="") vb = sortAsc ? Infinity : -Infinity;
-    if(typeof va === "string" || typeof vb === "string"){
-      var sa = String(va===Infinity||va===-Infinity?"":va);
-      var sb = String(vb===Infinity||vb===-Infinity?"":vb);
-      return sortAsc ? sa.localeCompare(sb) : sb.localeCompare(sa);
-    }
-    return sortAsc ? va-vb : vb-va;
+    var va = a.rssi!=null ? a.rssi : -999;
+    var vb = b.rssi!=null ? b.rssi : -999;
+    return vb - va;
   });
   for(var i=0;i<list.length;i++){
     var d = list[i];
-    var tr = rowMap[d.address];
-    if(!tr){
-      tr = document.createElement("tr");
-      tr.setAttribute("data-addr", d.address);
-      for(var c=0;c<7;c++) tr.appendChild(document.createElement("td"));
-      tr.addEventListener("mouseenter", (function(addr){
-        return function(){ hoveredAddr=addr; showTooltipForAddr(addr); };
+    var el = dlEntries[d.address];
+    if(!el){
+      el = document.createElement("div");
+      el.className = "dev-entry";
+      el.setAttribute("data-addr", d.address);
+      el.innerHTML = '<div><span class="de-addr"></span><span class="de-pin"></span></div>'
+        +'<div class="de-name"></div>'
+        +'<div class="de-meta"><span class="de-rssi"></span><span class="de-dist"></span></div>';
+      el.addEventListener("click", (function(addr){
+        return function(){ togglePin(addr); };
       })(d.address));
-      tr.addEventListener("mousemove", function(e){
-        var tip=document.getElementById("tooltip");
-        positionTooltip(tip,e.clientX,e.clientY);
+      el.addEventListener("mouseenter", (function(addr){
+        return function(e){ hoveredAddr=addr; var dd=devices[addr]; if(dd) showTooltip(dd,e.clientX,e.clientY); };
+      })(d.address));
+      el.addEventListener("mousemove", function(e){
+        positionTooltip(document.getElementById("tooltip"),e.clientX,e.clientY);
       });
-      tr.addEventListener("mouseleave", function(){
+      el.addEventListener("mouseleave", function(){
         hoveredAddr=null; hideTooltip();
       });
-      rowMap[d.address] = tr;
+      dlEntries[d.address] = el;
     }
-    var cells = tr.children;
-    cells[0].textContent = d.address;
-    cells[1].textContent = d.name||"Unknown";
-    cells[2].textContent = d.rssi!=null ? d.rssi+" dBm" : "";
-    cells[3].textContent = d.avg_rssi!=null ? d.avg_rssi+" dBm" : "";
-    cells[4].textContent = (d.est_distance!=null&&d.est_distance!=="") ? "~"+Number(d.est_distance).toFixed(1)+"m" : "";
-    cells[5].textContent = d.times_seen ? d.times_seen+"x" : "";
-    cells[6].textContent = d.last_seen||"";
-    // ensure row is in DOM at correct position
-    if(tr.parentNode !== tbody){
-      tbody.appendChild(tr);
-    }
+    // update content
+    el.querySelector(".de-addr").textContent = d.address;
+    el.querySelector(".de-name").textContent = d.name&&d.name!=="Unknown" ? d.name : "";
+    var rssiEl = el.querySelector(".de-rssi");
+    rssiEl.textContent = d.rssi!=null ? d.rssi+" dBm" : "";
+    rssiEl.style.color = dotColor(d.est_distance);
+    var distStr = (d.est_distance!=null&&d.est_distance!=="") ? "~"+Number(d.est_distance).toFixed(1)+"m" : "";
+    el.querySelector(".de-dist").textContent = distStr;
+    el.querySelector(".de-pin").textContent = pinnedAddrs[d.address] ? " [pinned]" : "";
+    // update signal class
+    el.className = "dev-entry " + sigClass(d) + (pinnedAddrs[d.address] ? " pinned" : "");
+    // ensure in DOM
+    if(!el.parentNode) dlScroll.appendChild(el);
   }
-  // reorder rows
+  // reorder
   for(var j=0;j<list.length;j++){
-    var row = rowMap[list[j].address];
-    tbody.appendChild(row);
+    dlScroll.appendChild(dlEntries[list[j].address]);
   }
+  // update header count
+  document.querySelector("#device-list .dl-header").textContent = "Detected ("+list.length+")";
 }
 
-// sortable columns
-document.querySelectorAll("#dev-table th").forEach(function(th){
-  th.addEventListener("click", function(){
-    var col = th.getAttribute("data-col");
-    if(sortCol===col) sortAsc=!sortAsc;
-    else { sortCol=col; sortAsc=false; }
-    updateTable();
-  });
-});
+function togglePin(addr){
+  if(pinnedAddrs[addr]){ delete pinnedAddrs[addr]; }
+  else { pinnedAddrs[addr] = true; }
+  updateDeviceList();
+  updatePinnedPanel();
+}
+
+function updatePinnedPanel(){
+  var panel = document.getElementById("pinned-panel");
+  var scroll = document.getElementById("pinned-scroll");
+  var addrs = Object.keys(pinnedAddrs);
+  if(addrs.length === 0){
+    panel.classList.remove("visible");
+    resizeCanvas();
+    return;
+  }
+  panel.classList.add("visible");
+  // rebuild pinned entries
+  scroll.innerHTML = "";
+  for(var i=0;i<addrs.length;i++){
+    var addr = addrs[i];
+    var d = devices[addr];
+    var el = document.createElement("div");
+    el.className = "pin-entry";
+    if(d) el.style.borderLeftColor = dotColor(d.est_distance);
+    var info = document.createElement("div");
+    var addrEl = document.createElement("div");
+    addrEl.className = "pe-addr";
+    addrEl.textContent = addr;
+    info.appendChild(addrEl);
+    if(d){
+      if(d.name && d.name !== "Unknown"){
+        var nameEl = document.createElement("div");
+        nameEl.className = "pe-name";
+        nameEl.textContent = d.name;
+        info.appendChild(nameEl);
+      }
+      var metaEl = document.createElement("div");
+      metaEl.className = "pe-meta";
+      var parts = [];
+      if(d.rssi!=null) parts.push(d.rssi+" dBm");
+      if(d.est_distance!=null&&d.est_distance!=="") parts.push("~"+Number(d.est_distance).toFixed(1)+"m");
+      metaEl.textContent = parts.join(" | ");
+      info.appendChild(metaEl);
+    }
+    el.appendChild(info);
+    var closeBtn = document.createElement("span");
+    closeBtn.className = "pe-close";
+    closeBtn.textContent = "\u00D7";
+    closeBtn.addEventListener("click", (function(a){
+      return function(e){ e.stopPropagation(); togglePin(a); };
+    })(addr));
+    el.appendChild(closeBtn);
+    // hover tooltip
+    el.addEventListener("mouseenter", (function(a){
+      return function(e){ hoveredAddr=a; var dd=devices[a]; if(dd) showTooltip(dd,e.clientX,e.clientY); };
+    })(addr));
+    el.addEventListener("mousemove", function(e){
+      positionTooltip(document.getElementById("tooltip"),e.clientX,e.clientY);
+    });
+    el.addEventListener("mouseleave", function(){ hoveredAddr=null; hideTooltip(); });
+    scroll.appendChild(el);
+  }
+  document.querySelector("#pinned-panel .pp-header").textContent = "Pinned ("+addrs.length+")";
+  resizeCanvas();
+}
 
 /* ================================================================
    Tooltip
@@ -880,15 +973,6 @@ function showTooltip(dev, x, y){
   tip.innerHTML = html;
   tip.style.display = "block";
   positionTooltip(tip, x, y);
-}
-
-function showTooltipForAddr(addr){
-  var d = devices[addr];
-  if(!d) return;
-  var tr = rowMap[addr];
-  if(!tr) return;
-  var rect = tr.getBoundingClientRect();
-  showTooltip(d, rect.right+10, rect.top);
 }
 
 function positionTooltip(tip, x, y){
@@ -950,7 +1034,7 @@ socket.on("connect", function(){
         devices[d.address] = d;
         updateDevMarker(d);
       }
-      updateTable();
+      updateDeviceList();
     }
     if(state.status) updateStatus(state.status);
     if(state.gps && state.gps.lat!=null){
@@ -967,7 +1051,8 @@ socket.on("device_update", function(d){
   d._updateTs = Date.now();
   devices[d.address] = d;
   updateDevMarker(d);
-  updateTable();
+  updateDeviceList();
+  if(pinnedAddrs[d.address]) updatePinnedPanel();
   // spawn a ping ripple for new devices
   if(isNew){
     var dpr = window.devicePixelRatio||1;

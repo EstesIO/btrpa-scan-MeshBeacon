@@ -17,7 +17,7 @@ A Bluetooth Low Energy (BLE) scanner with advanced Resolvable Private Address (R
 - **Active Scanning** - Send SCAN_REQ to get SCAN_RSP with additional service UUIDs and device names that passive scanning misses
 - **Environment Presets** - Indoor, outdoor, and free-space path-loss models for more accurate distance estimation
 - **Proximity Alerts** - Audible/visual alert when a device is estimated within a configurable distance
-- **Web GUI** - Browser-based radar interface with animated sweep, distance visualization, GPS map, device table, and hover tooltips
+- **Web GUI** - Browser-based radar interface with animated sweep, distance visualization, GPS map, signal-strength device list with pin/unpin, and hover tooltips
 - **Live TUI** - Curses-based live-updating table sorted by signal strength
 - **Real-Time CSV Log** - Stream each detection to a CSV file as it happens
 - **Batch Export** - Export results to CSV, JSON, or JSONL at end of scan (supports stdout with `-o -`)
@@ -291,10 +291,11 @@ python3 btrpa-scan.py --all --gui
 
 The GUI features:
 
-- **Radar display** — animated sweep line with concentric distance rings (1m, 5m, 10m, 20m). Devices appear as color-coded dots positioned by estimated distance (green = close, yellow = medium, red = far)
+- **Radar display** — animated sweep line with concentric distance rings (1m, 5m, 10m, 20m). Devices appear as color-coded dots positioned by estimated distance (green = close, yellow = medium, red = far). Full-height layout with matrix data rain background and ghost MAC flicker effects
+- **Device list** — right-side panel listing all detected devices, color-coded by signal strength. Click any device to pin it for tracking
+- **Pinned devices** — left-side panel showing pinned MAC addresses with live RSSI and distance updates. Pin multiple devices simultaneously; click × to unpin
 - **GPS map** — Leaflet.js map with OpenStreetMap tiles showing scanner position and device locations. Automatically hidden if no GPS is available
-- **Device table** — sortable table with address, name, RSSI, distance, and detection count
-- **Hover tooltips** — hover over any radar dot or table row to see full device details (address, name, RSSI, TX power, distance, GPS, manufacturer data, services)
+- **Hover tooltips** — hover over any device (radar dot, list entry, or pinned entry) to see full device details (address, name, RSSI, TX power, distance, GPS, manufacturer data, services)
 - **Dark theme** — matrix-green hacker aesthetic designed for field work
 
 GUI mode scans continuously by default (no 30-second timeout). Press `Ctrl+C` to stop. Use `-t` to set a specific scan duration:
