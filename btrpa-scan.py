@@ -386,6 +386,98 @@ function hexToRgba(hex, a){
   return "rgba("+r+","+g+","+b+","+a+")";
 }
 
+/* ── ghost MAC flicker layer ────────────────────────────── */
+// Ghosts: faint MAC addresses / data that materialize, flicker, and dissolve
+// in the radar background. Each ghost has a lifecycle: fade in -> flicker -> fade out
+var ghosts = []; // {text, x, y, born, lifespan, flickerRate, fontSize, angle}
+var GHOST_MAX = 18;
+var GHOST_SPAWN_INTERVAL = 400; // ms between spawns
+var lastGhostSpawn = 0;
+
+function spawnGhost(W, H, dpr){
+  var addrs = Object.keys(devices);
+  var text;
+  if(addrs.length > 0 && Math.random() < 0.85){
+    // mostly use real device data
+    var dev = devices[addrs[Math.floor(Math.random()*addrs.length)]];
+    var options = [dev.address];
+    if(dev.name && dev.name !== "Unknown") options.push(dev.name);
+    if(dev.rssi != null) options.push("RSSI:" + dev.rssi + "dBm");
+    if(dev.manufacturer_data) options.push(dev.manufacturer_data.substring(0,20));
+    if(dev.est_distance != null && dev.est_distance !== "") options.push("~" + Number(dev.est_distance).toFixed(1) + "m");
+    if(dev.service_uuids) options.push(dev.service_uuids.substring(0,22));
+    text = options[Math.floor(Math.random()*options.length)];
+  } else {
+    // filler hex strings and BLE terms
+    var fillers = ["ADV_IND","SCAN_RSP","LL_DATA","ATT_MTU","SMP_PAIR",
+      "0x"+Math.floor(Math.random()*0xFFFF).toString(16).toUpperCase().padStart(4,"0"),
+      Math.floor(Math.random()*0xFFFFFF).toString(16).toUpperCase().padStart(6,"0")+":"+
+      Math.floor(Math.random()*0xFFFFFF).toString(16).toUpperCase().padStart(6,"0")];
+    text = fillers[Math.floor(Math.random()*fillers.length)];
+  }
+  // position: scattered across the full radar canvas, avoid dead center
+  var x, y, attempts = 0;
+  do {
+    x = 40*dpr + Math.random()*(W - 80*dpr);
+    y = 30*dpr + Math.random()*(H - 60*dpr);
+    attempts++;
+  } while(attempts < 5 && Math.abs(x-W/2)<60*dpr && Math.abs(y-H/2)<40*dpr);
+
+  ghosts.push({
+    text: text,
+    x: x, y: y,
+    born: Date.now(),
+    lifespan: 2000 + Math.random()*3000, // 2-5 seconds
+    flickerRate: 80 + Math.random()*200, // ms between flicker toggles
+    fontSize: Math.floor(9 + Math.random()*3)*dpr, // 9-11px
+    angle: (Math.random()-0.5)*0.12 // slight random tilt
+  });
+}
+
+function drawGhosts(W, H, dpr){
+  var now = Date.now();
+  // spawn new ghosts
+  if(now - lastGhostSpawn > GHOST_SPAWN_INTERVAL && ghosts.length < GHOST_MAX){
+    spawnGhost(W, H, dpr);
+    lastGhostSpawn = now;
+  }
+  // draw and cull
+  for(var gi = ghosts.length-1; gi >= 0; gi--){
+    var g = ghosts[gi];
+    var age = now - g.born;
+    if(age > g.lifespan){ ghosts.splice(gi,1); continue; }
+    var progress = age / g.lifespan;
+    // envelope: fade in (0-15%), sustain with flicker (15-80%), fade out (80-100%)
+    var envelope;
+    if(progress < 0.15) envelope = progress / 0.15;
+    else if(progress > 0.80) envelope = (1 - progress) / 0.20;
+    else envelope = 1;
+    // flicker: random on/off toggling
+    var flickerOn = Math.sin(age / g.flickerRate * Math.PI) > -0.3;
+    if(!flickerOn && progress > 0.15 && progress < 0.80){
+      // occasional hard flicker off
+      if(Math.random() < 0.08) continue;
+    }
+    // occasional glitch: brief full-brightness flash
+    var glitch = Math.random() < 0.006;
+    var alpha = glitch ? 0.18 : Math.max(0, envelope * 0.09 * (flickerOn ? 1 : 0.2));
+    if(alpha < 0.005) continue;
+
+    rCtx.save();
+    rCtx.translate(g.x, g.y);
+    rCtx.rotate(g.angle);
+    rCtx.font = g.fontSize + "px monospace";
+    rCtx.fillStyle = "rgba(0,255,65," + alpha.toFixed(3) + ")";
+    rCtx.fillText(g.text, 0, 0);
+    // scanline effect: thin horizontal line through the text
+    if(glitch){
+      rCtx.fillStyle = "rgba(0,255,65,0.06)";
+      rCtx.fillRect(-2*dpr, -g.fontSize*0.3, rCtx.measureText(g.text).width+4*dpr, 1*dpr);
+    }
+    rCtx.restore();
+  }
+}
+
 function drawRadar(ts){
   var dpr = window.devicePixelRatio||1;
   var W = rCanvas.width, H = rCanvas.height;
@@ -393,6 +485,9 @@ function drawRadar(ts){
   var maxR = Math.min(cx, cy)*0.9;
 
   rCtx.clearRect(0,0,W,H);
+
+  // ── flickering ghost MAC addresses in background ──
+  drawGhosts(W, H, dpr);
 
   // ── subtle grid lines (crosshair) ──
   rCtx.strokeStyle = "rgba(0,255,65,0.06)";
